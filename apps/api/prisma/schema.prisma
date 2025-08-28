@@ -1,0 +1,117 @@
+// datasource and generator are already set by prisma init
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String           @id @default(cuid())
+  phone        String           @unique
+  displayName  String
+  avatarUrl    String?
+  about        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  // relations
+  memberships  ChatMember[]
+  messages     Message[]        @relation("MessageAuthor")
+  receipts     MessageReceipt[]
+  devices      Device[]
+}
+
+model Chat {
+  id          String       @id @default(cuid())
+  isGroup     Boolean      @default(false)
+  title       String?
+  avatarUrl   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  // relations
+  members     ChatMember[]
+  messages    Message[]
+}
+
+model ChatMember {
+  id           String     @id @default(cuid())
+  chatId       String
+  userId       String
+  role         MemberRole @default(MEMBER)
+  joinedAt     DateTime   @default(now())
+  isMuted      Boolean    @default(false)
+  pinned       Boolean    @default(false)
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+}
+
+enum MemberRole {
+  MEMBER
+  ADMIN
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  chatId      String
+  authorId    String
+  body        String?
+  kind        MessageKind @default(TEXT)
+  mediaUrl    String?
+  mediaType   String?
+  createdAt   DateTime    @default(now())
+  editedAt    DateTime?
+  deletedAt   DateTime?
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  author User @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  receipts MessageReceipt[]
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+  SYSTEM
+}
+
+model MessageReceipt {
+  id          String         @id @default(cuid())
+  messageId   String
+  userId      String
+  status      ReceiptStatus
+  at          DateTime       @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, status])
+  @@index([userId])
+  @@index([messageId])
+}
+
+enum ReceiptStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  createdAt DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([userId, tokenHash])
+}
