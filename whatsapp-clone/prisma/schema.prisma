@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  phone          String    @unique
+  displayName    String
+  avatarUrl      String?
+  statusMessage  String?
+  lastSeenAt     DateTime?
+  isOnline       Boolean   @default(false)
+
+  memberships    Membership[]
+  messages       Message[] @relation("MessageSender")
+  receipts       Receipt[]
+}
+
+model Chat {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  isGroup     Boolean      @default(false)
+  title       String?
+  avatarUrl   String?
+
+  memberships Membership[]
+  messages    Message[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  role      String   @default("member")
+
+  userId String
+  chatId String
+  user   User   @relation(fields: [userId], references: [id])
+  chat   Chat   @relation(fields: [chatId], references: [id])
+
+  @@unique([userId, chatId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  type       MessageType @default(TEXT)
+  text       String?
+  mediaUrl   String?
+  mediaType  String?
+
+  chatId   String
+  senderId String
+  chat     Chat   @relation(fields: [chatId], references: [id])
+  sender   User   @relation("MessageSender", fields: [senderId], references: [id])
+  receipts Receipt[]
+}
+
+model Receipt {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  status    ReceiptStatus @default(SENT)
+
+  messageId String
+  userId    String
+  message   Message @relation(fields: [messageId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum ReceiptStatus {
+  SENT
+  DELIVERED
+  READ
+}
