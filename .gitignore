@@ -1,2 +1,1 @@
-download
-output
+node_modules\n.env\n/.turbo\n.next\ndist\nbuild\ncoverage\n.DS_Store\n
